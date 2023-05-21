@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract BlockchainDevelopment {
+    enum ProjectStatus { Pending, InProgress, Completed }
+
+    struct Project {
+        uint256 id;
+        string name;
+        string description;
+        address client;
+        address developer;
+        ProjectStatus status;
+        uint256 deadline;
+        uint256 totalPayment;
+        uint256 remainingPayment;
+    }
+
+    uint256 public projectCount;
+    mapping(uint256 => Project) public projects;
+
+    event ProjectCreated(uint256 id, string name, address client, address developer);
+    event ProjectStatusUpdated(uint256 id, ProjectStatus status);
+    event PaymentMade(uint256 id, uint256 amount);
+
+    constructor() {
+        projectCount = 0;
+    }
+
+    function createProject(
+        string memory _name,
+        string memory _description,
+        address _developer,
+        uint256 _deadline,
+        uint256 _totalPayment
+    ) public {
+        projectCount++;
+        Project storage newProject = projects[projectCount];
+        newProject.id = projectCount;
+        newProject.name = _name;
+        newProject.description = _description;
+        newProject.client = msg.sender;
+        newProject.developer = _developer;
+        newProject.status = ProjectStatus.Pending;
+        newProject.deadline = _deadline;
+        newProject.totalPayment = _totalPayment;
+        newProject.remainingPayment = _totalPayment;
+
+        emit ProjectCreated(projectCount, _name, msg.sender, _developer);
+    }
+
+    function updateProjectStatus(uint256 _id, ProjectStatus _status) public {
+        require(_id <= projectCount, "Invalid project ID");
+
+        Project storage project = projects[_id];
+        require(msg.sender == project.client || msg.sender == project.developer, "Unauthorized access");
+
+        project.status = _status;
+
+        emit ProjectStatusUpdated(_id, _status);
+    }
+
+    function makePayment(uint256 _id, uint256 _amount) public payable {
+        require(_id <= projectCount, "Invalid project ID");
+
+        Project storage project = projects[_id];
+        require(msg.sender == project.client, "Unauthorized access");
+        require(_amount <= project.remainingPayment, "Invalid payment amount");
+
+        project.remainingPayment -= _amount;
+
+        emit PaymentMade(_id, _amount);
+    }
+}
